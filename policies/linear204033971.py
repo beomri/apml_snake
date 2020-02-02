@@ -1,7 +1,7 @@
 from policies import base_policy as bp
 import numpy as np
 
-EPSILON = 0.05
+EPSILON = 1
 LR = 0.01
 DISCOUNT = 0.4
 
@@ -23,11 +23,13 @@ class Linear204033971(bp.Policy):
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
+        self.log(f'epsilon: {self.epsilon}')
 
     def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
         try:
             if round % 100 == 0:
+                self.log(f'{self.epsilon}')
                 if round > self.game_duration - self.score_scope:
                     self.log("Rewards in last 100 rounds which counts towards the score: " + str(self.r_sum), 'VALUE')
                 else:
@@ -40,7 +42,8 @@ class Linear204033971(bp.Policy):
             self.log("Something Went Wrong...", 'EXCEPTION')
             self.log(e, 'EXCEPTION')
             
-            
+        for s, a, r in zip(self.last_states, self.last_actions, self.last_rewards):
+            self.update_values(s, a, r)
             
 
         self.last_states = []
@@ -128,9 +131,10 @@ class Linear204033971(bp.Policy):
             temp_pos = head_pos
             temp_pos = temp_pos.move(bp.Policy.TURNS[direction][route[0]])
             for step_ind, step in enumerate(route[1:]):
+                temp_pos = temp_pos.move(bp.Policy.TURNS[direction][route[0]])
                 r = temp_pos[0]
                 c = temp_pos[1]
                 temp_feats[board[r, c] + 1] += 1
-            feats[(last_ind + route_ind*11):(last_ind +(route_ind+1)*11)] = temp_feats
+            feats[(last_ind + route_ind*11):(last_ind + (route_ind+1)*11)] = temp_feats
 
         return feats[:, np.newaxis]
