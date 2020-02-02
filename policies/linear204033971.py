@@ -1,7 +1,7 @@
 from policies import base_policy as bp
 import numpy as np
 
-EPSILON = 1
+EPSILON = 0.05
 LR = 0.01
 DISCOUNT = 0.4
 
@@ -19,17 +19,16 @@ class Linear204033971(bp.Policy):
 
     def init_run(self):
         self.r_sum = 0
-        self.weights = np.random.random([1, 89])
+        self.weights = np.zeros([89, 1])
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
-        self.log(f'epsilon: {self.epsilon}')
+#        self.log(f'epsilon: {self.epsilon}')
 
     def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
         try:
             if round % 100 == 0:
-                self.log(f'{self.epsilon}')
                 if round > self.game_duration - self.score_scope:
                     self.log("Rewards in last 100 rounds which counts towards the score: " + str(self.r_sum), 'VALUE')
                 else:
@@ -51,12 +50,11 @@ class Linear204033971(bp.Policy):
         self.last_rewards = []
 
     def update_values(self, state, action, reward):
-        q_values = np.zeros(3)
+        q_values = np.zeros(len(bp.Policy.ACTIONS))
         for a_ind, a in enumerate(bp.Policy.ACTIONS):
             q_values[a_ind] = self.get_qvalue(state, a)
         q_opt = reward + self.discount*q_values.max()
         delta = self.get_qvalue(state, action)
-
         self.weights -= self.lr * (q_opt - delta) * self.get_features(state)
 
     def act(self, round, prev_state, prev_action, reward, new_state, too_slow):
@@ -68,14 +66,12 @@ class Linear204033971(bp.Policy):
 
         board, head = new_state
         head_pos, direction = head
-        return np.random.choice(bp.Policy.ACTIONS)
+#        return np.random.choice(bp.Policy.ACTIONS)
+    
         if np.random.rand() < self.epsilon:
             return np.random.choice(bp.Policy.ACTIONS)
-
-        else:
-            a = self.get_policy(new_state)
-            print(a)
-            return a
+        
+        return self.get_policy(new_state)
 
 
     def get_policy(self, state):
@@ -86,9 +82,7 @@ class Linear204033971(bp.Policy):
         q_values = np.zeros(3)
 
         for a_ind, a in enumerate(bp.Policy.ACTIONS):
-#            next_position = head_pos.move(bp.Policy.TURNS[direction][a])
-#            new_state = (board, (next_position, bp.Policy.TURNS[direction][a]))
-            q_values[a_ind] = self.get_qvalue(state, a)#self.weights.T @ self.get_features(new_state)
+            q_values[a_ind] = self.get_qvalue(state, a)
 
         return bp.Policy.ACTIONS[np.argmax(q_values)]
 
@@ -98,7 +92,7 @@ class Linear204033971(bp.Policy):
         head_pos, direction = head
         next_position = head_pos.move(bp.Policy.TURNS[direction][action])
         new_state = (board, (next_position, bp.Policy.TURNS[direction][action]))
-        return self.weights.T @ self.get_features(new_state)
+        return np.squeeze(self.weights.T @ self.get_features(new_state))
 
 
     def get_features(self, state):
@@ -108,20 +102,18 @@ class Linear204033971(bp.Policy):
         board, head = state
         head_pos, direction = head
 
-        for ind, a in enumerate(bp.Policy.ACTIONS):
-            temp_feats = np.zeros(11)
-#            next_position = head_pos.move(bp.Policy.TURNS[direction][a])
-            r = head_pos[0]
-            c = head_pos[1]
-            temp_feats[board[r, c] + 1] = 1
-            feats[ind*11:(ind+1)*11] = temp_feats
-        last_ind = 32
+        temp_feats = np.zeros(11)
+        r = head_pos[0]
+        c = head_pos[1]
+        temp_feats[board[r, c] + 1] = 1
+        feats[0:11] = temp_feats
+        last_ind = 11
 
         forward_region = ['F', 'F', 'F']
         forward_left_region = ['F', 'L', 'F', 'R', 'R', 'L', 'L']
         forward_right_region = ['F', 'R', 'F', 'L', 'L', 'R', 'R']
-        right_region = ['R','F','R','R']
-        left_region = ['L','F','L','L']
+        right_region = ['R', 'F', 'R', 'R']
+        left_region = ['L', 'F', 'L', 'L']
 
         routes = [forward_region, forward_left_region,
                   forward_right_region, right_region, left_region]
@@ -130,11 +122,12 @@ class Linear204033971(bp.Policy):
             temp_feats = np.zeros(11)
             temp_pos = head_pos
             temp_pos = temp_pos.move(bp.Policy.TURNS[direction][route[0]])
-            for step_ind, step in enumerate(route[1:]):
-                temp_pos = temp_pos.move(bp.Policy.TURNS[direction][route[0]])
+            for step in route[1:]:
+                temp_pos = temp_pos.move(bp.Policy.TURNS[direction][step])
                 r = temp_pos[0]
                 c = temp_pos[1]
                 temp_feats[board[r, c] + 1] += 1
             feats[(last_ind + route_ind*11):(last_ind + (route_ind+1)*11)] = temp_feats
+#            self.log(f'{np.arange((last_ind + route_ind*11),(last_ind + (route_ind+1)*11))}')
 
         return feats[:, np.newaxis]
