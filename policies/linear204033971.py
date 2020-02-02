@@ -55,14 +55,14 @@ class Linear204033971(bp.Policy):
             q_values[a_ind] = self.get_qvalue(state, a)
         q_opt = reward + self.discount*q_values.max()
         delta = self.get_qvalue(state, action)
-        self.weights -= self.lr * (q_opt - delta) * self.get_features(state)
+        self.weights += self.lr * (q_opt - delta) * self.get_features(state)
+
 
     def act(self, round, prev_state, prev_action, reward, new_state, too_slow):
         if round > 0:
             self.last_states.append(prev_state)
             self.last_actions.append(prev_action)
             self.last_rewards.append(reward)
-
 
         board, head = new_state
         head_pos, direction = head
