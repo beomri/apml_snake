@@ -1,5 +1,7 @@
 from policies import base_policy as bp
 import numpy as np
+from keras.models import Model
+from keras.layers import Input, Dense
 
 EPSILON = 0.05
 
