@@ -1,19 +1,21 @@
-from policies import base_policy as bp
 import numpy as np
-from keras.models import Model
-from keras.layers import Input, Dense
-from keras.optimizers import Adam
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-import numbers
+import base_policy as bp
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 
 EPSILON = 0.05
-STATE_DIM = 1 + 11 + (5*11)
+LR = 0.001
+DISCOUNT = 0.15
 NUM_VALUES = 11
+STATE_DIM = 1 + NUM_VALUES + (5 * NUM_VALUES)
 
 
 class Custom204033971(bp.Policy):
     """
-    A policy which avoids collisions with obstacles and other snakes. It has an epsilon parameter which controls the
+    A policy which avoids collisions with obstacles and other snakes.
+    It has an epsilon parameter which controls the
     percentag of actions which are randomly chosen.
     """
 
@@ -23,11 +25,10 @@ class Custom204033971(bp.Policy):
 
     def init_run(self):
         self.r_sum = 0
-        self.feature_shape = 67
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
-        self.pn = PolicyNetwork(self.feature_shape, bp.Policy.ACTIONS.shape[0], 3)
+        self.pn = PolicyNetwork(STATE_DIM, len(bp.Policy.ACTIONS), 3)
 
     def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
@@ -63,9 +64,8 @@ class Custom204033971(bp.Policy):
         if np.random.rand() < self.epsilon:
             return np.random.choice(bp.Policy.ACTIONS)
 
-        else:
-            probs = self.pn.predict(self.get_features(new_state))
-            return np.random.choice(bp.Policy.ACTIONS, p=probs)
+        probs = self.pn.predict(self.get_features(new_state))
+        return np.random.choice(bp.Policy.ACTIONS, p=probs)
 
     def get_features(self, state):
         temp_feats = np.zeros([6, NUM_VALUES])
@@ -104,10 +104,10 @@ class Custom204033971(bp.Policy):
 class PolicyNetwork:
 
     def __init__(self, in_shape, out_shape, n_hidden_layers, n_nodes=64,
-                 loss='sparse_categorical_crossentropy', optimizer=Adam, lr=0.001):
+                 loss='sparse_categorical_crossentropy',
+                 optimizer=Adam, lr=0.001):
 
-        if isinstance(n_nodes, numbers.Number):
-            n_nodes = [n_nodes] * n_hidden_layers
+        n_nodes = [n_nodes] * n_hidden_layers
 
         self.in_shape = in_shape
         self.out_shape = out_shape
@@ -117,13 +117,14 @@ class PolicyNetwork:
         self.optimizer = optimizer(lr=lr)
         self.lr = lr
 
-
         input = Input(shape=(self.in_shape,))
         in_layer = input
         for i in range(n_hidden_layers):
-            out_layer = Dense(n_nodes[i], input_shape=(self.in_shape,), activation='relu')(in_layer)
+            out_layer = Dense(n_nodes[i], input_shape=(self.in_shape,),
+                              activation='relu')(in_layer)
             in_layer = out_layer
-        output = Dense(self.out_shape, input_shape=(self.n_nodes[-1],), activation='softmax')(out_layer)
+        output = Dense(self.out_shape, input_shape=(self.n_nodes[-1],),
+                       activation='softmax')(out_layer)
         model = Model(inputs=input, outputs=output)
         model.compile(loss=self.loss,
                       optimizer=self.optimizer,
@@ -142,4 +143,5 @@ if __name__ == "__main__":
         x[i] = np.random.randint(0, 6, size=STATE_DIM)
 
     nn = PolicyNetwork(67, 3, 3)
-    nn.model.fit(x=x, y=y, batch_size=32, epochs=10, verbose=1, callbacks=None) # integrate callbacks later!
+    # TODO: integrate callbacks later!
+    nn.model.fit(x=x, y=y, batch_size=32, epochs=10, verbose=1, callbacks=None)

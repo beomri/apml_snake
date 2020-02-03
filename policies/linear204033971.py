@@ -1,11 +1,12 @@
-from policies import base_policy as bp
 import numpy as np
+from policies import base_policy as bp
+
 
 EPSILON = 0.05
 LR = 0.001
 DISCOUNT = 0.15
 NUM_VALUES = 11
-STATE_DIM = 1 + NUM_VALUES + (5*NUM_VALUES)
+STATE_DIM = 1 + NUM_VALUES + (5 * NUM_VALUES)
 
 
 class Linear204033971(bp.Policy):
