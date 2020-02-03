@@ -3,6 +3,7 @@ import numpy as np
 from keras.models import Model
 from keras.layers import Input, Dense
 import numbers
+from sklearn.preprocessing import OneHotEncoder
 
 EPSILON = 0.05
 STATE_DIM = 1 + 11 + (5*11)
@@ -109,10 +110,10 @@ class PolicyNetwork:
 
         input = Input(shape=(self.in_shape,))
         in_layer = input
-        for i in n_hidden_layers:
-            out_layer = Dense(n_nodes[i], activation='relu')(in_layer)
+        for i in range(n_hidden_layers):
+            out_layer = Dense(n_nodes[i], input_shape=(self.in_shape,), activation='relu')(in_layer)
             in_layer = out_layer
-        output = Dense(self.out_shape, activation='softmax')(out_layer)
+        output = Dense(self.out_shape, input_shape=(self.n_nodes[-1],), activation='softmax')(out_layer)
         model = Model(inputs=input, outputs=output)
         model.compile(loss='categorical_crossentropy',
                       optimizer=optimizer,
@@ -120,4 +121,15 @@ class PolicyNetwork:
                       metrics=['accuracy'])
 
         self.model = model
+        print(self.model.summary())
 
+if __name__ == "__main__":
+    n = 200
+    x = np.zeros(shape=(n, STATE_DIM))
+    y = np.random.randint(0, 3, n)
+
+    for i in range(n):
+        x[i] = np.random.randint(0, 6, size=STATE_DIM)
+
+    nn = PolicyNetwork(67, 3, 3)
+    nn.model.fit(x=x, y=y, batch_size=32, epochs=10, verbose=1, callbacks=None) # integrate callbacks later!
