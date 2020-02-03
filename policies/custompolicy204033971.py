@@ -2,6 +2,8 @@ from policies import base_policy as bp
 import numpy as np
 from keras.models import Model
 from keras.layers import Input, Dense
+from keras.optimizers import Adam
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 import numbers
 
 EPSILON = 0.05
@@ -25,7 +27,7 @@ class Custom204033971(bp.Policy):
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
-        self.model = PolicyNetwork(self.feature_shape, bp.Policy.ACTIONS.shape[0], 3)
+        self.pn = PolicyNetwork(self.feature_shape, bp.Policy.ACTIONS.shape[0], 3)
 
     def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
@@ -43,6 +45,14 @@ class Custom204033971(bp.Policy):
             self.log("Something Went Wrong...", 'EXCEPTION')
             self.log(e, 'EXCEPTION')
 
+        X = [self.get_features(x) for x in self.last_states]
+
+        self.pn.fit()
+
+        self.last_states = []
+        self.last_actions = []
+        self.last_rewards = []
+
     def act(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
         if round > 0:
@@ -54,7 +64,7 @@ class Custom204033971(bp.Policy):
             return np.random.choice(bp.Policy.ACTIONS)
 
         else:
-            probs = self.model.predict(self.get_features(new_state))
+            probs = self.pn.predict(self.get_features(new_state))
             return np.random.choice(bp.Policy.ACTIONS, p=probs)
 
     def get_features(self, state):
@@ -94,7 +104,7 @@ class Custom204033971(bp.Policy):
 class PolicyNetwork:
 
     def __init__(self, in_shape, out_shape, n_hidden_layers, n_nodes=64,
-                 loss='categorical_crossentropy', optimizer='adam', lr=0.01):
+                 loss='sparse_categorical_crossentropy', optimizer=Adam, lr=0.001):
 
         if isinstance(n_nodes, numbers.Number):
             n_nodes = [n_nodes] * n_hidden_layers
@@ -104,8 +114,9 @@ class PolicyNetwork:
         self.n_hidden_layers = n_hidden_layers
         self.n_nodes = n_nodes
         self.loss = loss
-        self.optimizer = optimizer
-        c = lr
+        self.optimizer = optimizer(lr=lr)
+        self.lr = lr
+
 
         input = Input(shape=(self.in_shape,))
         in_layer = input
@@ -114,20 +125,18 @@ class PolicyNetwork:
             in_layer = out_layer
         output = Dense(self.out_shape, input_shape=(self.n_nodes[-1],), activation='softmax')(out_layer)
         model = Model(inputs=input, outputs=output)
-        model.compile(loss='categorical_crossentropy',
-                      optimizer=optimizer,
+        model.compile(loss=self.loss,
+                      optimizer=self.optimizer,
                       metrics=['accuracy'])
 
         self.model = model
         print(self.model.summary())
 
+
 if __name__ == "__main__":
     n = 200
     x = np.zeros(shape=(n, STATE_DIM))
-    cats = np.random.randint(0, 3, n)
-    y = np.zeros((cats.size, cats.max() + 1))
-    y[np.arange(cats.size), cats] = 1
-    print(y.shape)
+    y = np.random.randint(0, 3, n)
 
     for i in range(n):
         x[i] = np.random.randint(0, 6, size=STATE_DIM)
