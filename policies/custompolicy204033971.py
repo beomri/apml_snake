@@ -2,6 +2,7 @@ from policies import base_policy as bp
 import numpy as np
 from keras.models import Model
 from keras.layers import Input, Dense
+import numbers
 
 EPSILON = 0.05
 
@@ -18,11 +19,11 @@ class Custom204033971(bp.Policy):
 
     def init_run(self):
         self.r_sum = 0
-        self.weights = np.zeros([67, 1])
+        self.feature_shape = 67
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
-        self.model = PolicyNetwork(bp.Policy.)
+        self.model = PolicyNetwork(self.feature_shape, bp.Policy.ACTIONS.shape[0], 3)
 
     def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
@@ -42,28 +43,17 @@ class Custom204033971(bp.Policy):
 
     def act(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
-        board, head = new_state
-        head_pos, direction = head
+        if round > 0:
+            self.last_states.append(prev_state)
+            self.last_actions.append(prev_action)
+            self.last_rewards.append(reward)
 
         if np.random.rand() < self.epsilon:
             return np.random.choice(bp.Policy.ACTIONS)
 
         else:
-            for a in list(np.random.permutation(bp.Policy.ACTIONS)):
-
-                # get a Position object of the position in the relevant direction from the head:
-                next_position = head_pos.move(bp.Policy.TURNS[direction][a])
-                r = next_position[0]
-                c = next_position[1]
-
-                # look at the board in the relevant position:
-                if board[r, c] > 5 or board[r, c] < 0:
-                    return a
-
-            # if all positions are bad:
-            return np.random.choice(bp.Policy.ACTIONS)
-
-            self.model.predict
+            probs = self.model.predict(self.get_features(new_state))
+            return np.random.choice(bp.Policy.ACTIONS, p=probs)
 
     def get_features(self, state):
         feats = np.zeros(89)
@@ -98,7 +88,6 @@ class Custom204033971(bp.Policy):
                 c = temp_pos[1]
                 temp_feats[board[r, c] + 1] += 1
             feats[(last_ind + route_ind * 11):(last_ind + (route_ind + 1) * 11)] = temp_feats
-        #            self.log(f'{np.arange((last_ind + route_ind*11),(last_ind + (route_ind+1)*11))}')
 
         return feats[:, np.newaxis]
 
@@ -108,15 +97,21 @@ class PolicyNetwork:
     def __init__(self, in_shape, out_shape, n_hidden_layers, n_nodes=64,
                  loss='categorical_crossentropy', optimizer='adam', lr=0.01):
 
+        if isinstance(n_nodes, numbers.Number):
+            n_nodes = [n_nodes] * n_hidden_layers
+
         self.in_shape = in_shape
         self.out_shape = out_shape
-        self.n_layers = n_hidden_layers
+        self.n_hidden_layers = n_hidden_layers
+        self.n_nodes = n_nodes
+        self.loss = loss
+        self.optimizer = optimizer
+        self.lr = lr
 
         input = Input(shape=(self.in_shape,))
         in_layer = input
-
         for i in n_hidden_layers:
-            out_layer = Dense(n_nodes, activation='relu')(in_layer)
+            out_layer = Dense(n_nodes[i], activation='relu')(in_layer)
             in_layer = out_layer
         output = Dense(self.out_shape, activation='softmax')(out_layer)
         model = Model(inputs=input, outputs=output)
