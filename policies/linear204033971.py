@@ -4,6 +4,7 @@ import numpy as np
 EPSILON = 0.05
 LR = 0.001
 DISCOUNT = 0.15
+STATE_DIM = 1 + 11 + (5*11)
 
 class Linear204033971(bp.Policy):
     """
@@ -19,11 +20,28 @@ class Linear204033971(bp.Policy):
 
     def init_run(self):
         self.r_sum = 0
-        self.weights = np.zeros([89, 1])
+#        self.weights = np.zeros(STATE_DIM)
+        self.weights = self.get_init_weights()
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
 #        self.log(f'epsilon: {self.epsilon}')
+
+    def get_init_weights(self):
+        return np.array([0.        , -0.03092003,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+        0.        ,  0.05040398, -0.03560333, -0.00933181, -0.01785775,
+        0.        ,  0.        , -0.02053777, -0.00573837,  0.00141165,
+       -0.02458667,  0.        , -0.01469611, -0.17184911, -0.0208431 ,
+       -0.06167063,  0.        ,  0.        , -0.04904329,  0.06140326,
+        0.06963069,  0.0015481 ,  0.        , -0.03089911, -0.14410397,
+       -0.01899338, -0.05495567,  0.        ,  0.        , -0.07919307,
+        0.08078631,  0.02967739,  0.03216132,  0.        ,  0.02570092,
+       -0.07041553,  0.00109382, -0.03418993,  0.        ,  0.        ,
+       -0.04697385,  0.00512719,  0.00195824,  0.02493904,  0.        ,
+        0.07211   , -0.08957441, -0.0142287 , -0.0228862 ,  0.        ,
+        0.        , -0.08987339, -0.00675773,  0.06915907, -0.01070873,
+        0.        , -0.03092003])
 
     def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
@@ -31,6 +49,7 @@ class Linear204033971(bp.Policy):
             if round % 100 == 0:
                 if round > self.game_duration - self.score_scope:
                     self.log("Rewards in last 100 rounds which counts towards the score: " + str(self.r_sum), 'VALUE')
+                    np.save(f'linear_weights/{round}.npy', self.weights)
                 else:
                     self.log("Rewards in last 100 rounds: " + str(self.r_sum), 'VALUE')
                 self.r_sum = 0
@@ -40,10 +59,10 @@ class Linear204033971(bp.Policy):
         except Exception as e:
             self.log("Something Went Wrong...", 'EXCEPTION')
             self.log(e, 'EXCEPTION')
-            
+
         for s, a, r in zip(self.last_states, self.last_actions, self.last_rewards):
             self.update_values(s, a, r)
-            
+
 
         self.last_states = []
         self.last_actions = []
@@ -67,10 +86,10 @@ class Linear204033971(bp.Policy):
         board, head = new_state
         head_pos, direction = head
 #        return np.random.choice(bp.Policy.ACTIONS)
-    
+
         if np.random.rand() < self.epsilon:
             return np.random.choice(bp.Policy.ACTIONS)
-        
+
         return self.get_policy(new_state)
 
 
@@ -92,11 +111,11 @@ class Linear204033971(bp.Policy):
         head_pos, direction = head
         next_position = head_pos.move(bp.Policy.TURNS[direction][action])
         new_state = (board, (next_position, bp.Policy.TURNS[direction][action]))
-        return np.squeeze(self.weights.T @ self.get_features(new_state))
+        return np.dot(self.weights, self.get_features(new_state))
 
 
     def get_features(self, state):
-        feats = np.zeros(89)
+        feats = np.zeros(STATE_DIM)
         feats[-1] = 1
 
         board, head = state
@@ -130,4 +149,4 @@ class Linear204033971(bp.Policy):
             feats[(last_ind + route_ind*11):(last_ind + (route_ind+1)*11)] = temp_feats
 #            self.log(f'{np.arange((last_ind + route_ind*11),(last_ind + (route_ind+1)*11))}')
 
-        return feats[:, np.newaxis]
+        return feats
