@@ -6,6 +6,7 @@ import numbers
 
 EPSILON = 0.05
 STATE_DIM = 1 + 11 + (5*11)
+NUM_VALUES = 11
 
 
 class Custom204033971(bp.Policy):
