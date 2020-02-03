@@ -4,8 +4,9 @@ import numpy as np
 EPSILON = 0.05
 LR = 0.001
 DISCOUNT = 0.15
-STATE_DIM = 1 + 11 + (5*11)
 NUM_VALUES = 11
+STATE_DIM = 1 + NUM_VALUES + (5*NUM_VALUES)
+
 
 class Linear204033971(bp.Policy):
     """
@@ -27,14 +28,12 @@ class Linear204033971(bp.Policy):
         self.last_actions = []
         self.last_rewards = []
 
-
-    def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
-
+    def learn(self, round, prev_state, prev_action,
+              reward, new_state, too_slow):
         try:
             if round % 100 == 0:
                 if round > self.game_duration - self.score_scope:
                     self.log("Rewards in last 100 rounds which counts towards the score: " + str(self.r_sum), 'VALUE')
-#                    np.save(f'linear_weights/{round}.npy', self.weights)
                 else:
                     self.log("Rewards in last 100 rounds: " + str(self.r_sum), 'VALUE')
                 self.r_sum = 0
@@ -48,7 +47,6 @@ class Linear204033971(bp.Policy):
         for s, a, r in zip(self.last_states, self.last_actions, self.last_rewards):
             self.update_values(s, a, r)
 
-
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
@@ -61,29 +59,22 @@ class Linear204033971(bp.Policy):
         delta = self.get_qvalue(state, action)
         self.weights += self.lr * (q_opt - delta) * self.get_features(state)
 
-
     def act(self, round, prev_state, prev_action, reward, new_state, too_slow):
         if round > 0:
             self.last_states.append(prev_state)
             self.last_actions.append(prev_action)
             self.last_rewards.append(reward)
+
+        # turn off exploration when final score is calculated
         if round > self.game_duration - self.score_scope:
             self.epsilon = 0
-
-#        board, head = new_state
-#        head_pos, direction = head
-#        return np.random.choice(bp.Policy.ACTIONS)
 
         if np.random.rand() < self.epsilon:
             return np.random.choice(bp.Policy.ACTIONS)
 
         return self.get_policy(new_state)
 
-
     def get_policy(self, state):
-
-#        board, head = state
-#        head_pos, direction = head
 
         q_values = np.zeros(3)
 
@@ -92,14 +83,12 @@ class Linear204033971(bp.Policy):
 
         return bp.Policy.ACTIONS[np.argmax(q_values)]
 
-
     def get_qvalue(self, state, action):
         board, head = state
         head_pos, direction = head
         next_position = head_pos.move(bp.Policy.TURNS[direction][action])
-        new_state = (board, (next_position, bp.Policy.TURNS[direction][action]))
+        new_state = board, (next_position, bp.Policy.TURNS[direction][action])
         return np.dot(self.weights, self.get_features(new_state))
-
 
     def get_features(self, state):
         temp_feats = np.zeros([6, NUM_VALUES])
