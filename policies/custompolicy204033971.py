@@ -3,7 +3,6 @@ import numpy as np
 from keras.models import Model
 from keras.layers import Input, Dense
 import numbers
-from sklearn.preprocessing import OneHotEncoder
 
 EPSILON = 0.05
 STATE_DIM = 1 + 11 + (5*11)
@@ -106,7 +105,7 @@ class PolicyNetwork:
         self.n_nodes = n_nodes
         self.loss = loss
         self.optimizer = optimizer
-        self.lr = lr
+        c = lr
 
         input = Input(shape=(self.in_shape,))
         in_layer = input
@@ -117,7 +116,6 @@ class PolicyNetwork:
         model = Model(inputs=input, outputs=output)
         model.compile(loss='categorical_crossentropy',
                       optimizer=optimizer,
-                      lr=lr,
                       metrics=['accuracy'])
 
         self.model = model
@@ -126,7 +124,10 @@ class PolicyNetwork:
 if __name__ == "__main__":
     n = 200
     x = np.zeros(shape=(n, STATE_DIM))
-    y = np.random.randint(0, 3, n)
+    cats = np.random.randint(0, 3, n)
+    y = np.zeros((cats.size, cats.max() + 1))
+    y[np.arange(cats.size), cats] = 1
+    print(y.shape)
 
     for i in range(n):
         x[i] = np.random.randint(0, 6, size=STATE_DIM)
