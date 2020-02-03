@@ -2,8 +2,8 @@ from policies import base_policy as bp
 import numpy as np
 
 EPSILON = 0.05
-LR = 0.01
-DISCOUNT = 0.4
+LR = 0.001
+DISCOUNT = 0.15
 
 class Linear204033971(bp.Policy):
     """
