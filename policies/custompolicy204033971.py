@@ -5,6 +5,7 @@ from keras.layers import Input, Dense
 import numbers
 
 EPSILON = 0.05
+STATE_DIM = 1 + 11 + (5*11)
 
 
 class Custom204033971(bp.Policy):
@@ -56,18 +57,14 @@ class Custom204033971(bp.Policy):
             return np.random.choice(bp.Policy.ACTIONS, p=probs)
 
     def get_features(self, state):
-        feats = np.zeros(89)
-        feats[-1] = 1
+        temp_feats = np.zeros([6, NUM_VALUES])
 
         board, head = state
         head_pos, direction = head
 
-        temp_feats = np.zeros(11)
         r = head_pos[0]
         c = head_pos[1]
-        temp_feats[board[r, c] + 1] = 1
-        feats[0:11] = temp_feats
-        last_ind = 11
+        temp_feats[0, board[r, c] + 1] = 1
 
         forward_region = ['F', 'F', 'F']
         forward_left_region = ['F', 'L', 'F', 'R', 'R', 'L', 'L']
@@ -79,17 +76,18 @@ class Custom204033971(bp.Policy):
                   forward_right_region, right_region, left_region]
 
         for route_ind, route in enumerate(routes):
-            temp_feats = np.zeros(11)
             temp_pos = head_pos
             temp_pos = temp_pos.move(bp.Policy.TURNS[direction][route[0]])
             for step in route[1:]:
                 temp_pos = temp_pos.move(bp.Policy.TURNS[direction][step])
                 r = temp_pos[0]
                 c = temp_pos[1]
-                temp_feats[board[r, c] + 1] += 1
-            feats[(last_ind + route_ind * 11):(last_ind + (route_ind + 1) * 11)] = temp_feats
+                temp_feats[route_ind + 1, board[r, c] + 1] += 1
 
-        return feats[:, np.newaxis]
+        feats = np.ones(STATE_DIM)
+        feats[:-1] = temp_feats.flatten()
+
+        return feats
 
 
 class PolicyNetwork:
