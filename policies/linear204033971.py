@@ -9,7 +9,8 @@ NUM_VALUES = 11
 
 class Linear204033971(bp.Policy):
     """
-    A policy which avoids collisions with obstacles and other snakes. It has an epsilon parameter which controls the
+    A policy which avoids collisions with obstacles and other snakes.
+    It has an epsilon parameter which controls the
     percentag of actions which are randomly chosen.
     """
 
@@ -22,27 +23,10 @@ class Linear204033971(bp.Policy):
     def init_run(self):
         self.r_sum = 0
         self.weights = np.zeros(STATE_DIM)
-#        self.weights = self.get_init_weights()
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
-#        self.log(f'epsilon: {self.epsilon}')
 
-    def get_init_weights(self):
-        return np.array([0.        , -0.03092003,  0.        ,  0.        ,  0.        ,
-        0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
-        0.        ,  0.05040398, -0.03560333, -0.00933181, -0.01785775,
-        0.        ,  0.        , -0.02053777, -0.00573837,  0.00141165,
-       -0.02458667,  0.        , -0.01469611, -0.17184911, -0.0208431 ,
-       -0.06167063,  0.        ,  0.        , -0.04904329,  0.06140326,
-        0.06963069,  0.0015481 ,  0.        , -0.03089911, -0.14410397,
-       -0.01899338, -0.05495567,  0.        ,  0.        , -0.07919307,
-        0.08078631,  0.02967739,  0.03216132,  0.        ,  0.02570092,
-       -0.07041553,  0.00109382, -0.03418993,  0.        ,  0.        ,
-       -0.04697385,  0.00512719,  0.00195824,  0.02493904,  0.        ,
-        0.07211   , -0.08957441, -0.0142287 , -0.0228862 ,  0.        ,
-        0.        , -0.08987339, -0.00675773,  0.06915907, -0.01070873,
-        0.        , -0.03092003])
 
     def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
@@ -83,9 +67,11 @@ class Linear204033971(bp.Policy):
             self.last_states.append(prev_state)
             self.last_actions.append(prev_action)
             self.last_rewards.append(reward)
+        if round > self.game_duration - self.score_scope:
+            self.epsilon = 0
 
-        board, head = new_state
-        head_pos, direction = head
+#        board, head = new_state
+#        head_pos, direction = head
 #        return np.random.choice(bp.Policy.ACTIONS)
 
         if np.random.rand() < self.epsilon:
@@ -96,8 +82,8 @@ class Linear204033971(bp.Policy):
 
     def get_policy(self, state):
 
-        board, head = state
-        head_pos, direction = head
+#        board, head = state
+#        head_pos, direction = head
 
         q_values = np.zeros(3)
 
