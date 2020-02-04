@@ -34,7 +34,9 @@ class Custom204033971(bp.Policy):
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
-        self.pn = PolicyNetwork(STATE_DIM, len(bp.Policy.ACTIONS), 2, 64)
+        self.pn = PolicyNetwork(STATE_DIM, len(bp.Policy.ACTIONS), 2, 32)
+        self.act_dict = {a:n for n,a in enumerate(bp.Policy.ACTIONS)}
+
 
     def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
@@ -53,11 +55,10 @@ class Custom204033971(bp.Policy):
             self.log(e, 'EXCEPTION')
 
         X = np.array(self.last_states)
-        Y = np.zeros(len(self.last_actions))
-        act_dict = {a:n for n,a in enumerate(bp.Policy.ACTIONS)}
-        for k in range(len(self.last_actions)):
-            Y[k] = act_dict[self.last_actions[k]]
-        SW = np.array(self.last_rewards)
+        Y = np.array([self.act_dict[a] for a in self.last_actions])
+
+        SW = np.array(self.last_rewards) #*(DISCOUNT ** np.arange(len(self.last_rewards)))
+
         self.pn.train(X, Y, SW)
 
         self.last_states = []
