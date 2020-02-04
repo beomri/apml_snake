@@ -1,5 +1,5 @@
 import numpy as np
-import base_policy as bp
+from policies import base_policy as bp
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense
 from tensorflow.keras.optimizers import Adam
@@ -46,9 +46,18 @@ class Custom204033971(bp.Policy):
             self.log("Something Went Wrong...", 'EXCEPTION')
             self.log(e, 'EXCEPTION')
 
-        X = [self.get_features(x) for x in self.last_states]
+        X = np.array(self.last_states)
+        Y = np.array(len(self.last_actions))
+        for ind, action in enumerate(bp.Policy.ACTIONS):
+            Y[self.last_actions == action] = ind
+        Y=np.squeeze(Y)
+        SW = np.array(self.last_rewards)
+        SW=np.squeeze(SW)
+        
+        self.log(f'{X}')
+        self.log(f'{Y}')
 
-        self.pn.fit()
+        self.pn.train(X, Y, SW)
 
         self.last_states = []
         self.last_actions = []
@@ -57,15 +66,15 @@ class Custom204033971(bp.Policy):
     def act(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
         if round > 0:
-            self.last_states.append(prev_state)
+            self.last_states.append(self.get_features(prev_state))
             self.last_actions.append(prev_action)
             self.last_rewards.append(reward)
-
-        if np.random.rand() < self.epsilon:
-            return np.random.choice(bp.Policy.ACTIONS)
-
-        probs = self.pn.predict(self.get_features(new_state))
-        return np.random.choice(bp.Policy.ACTIONS, p=probs)
+        
+        feats = self.get_features(new_state)
+        self.log(f'{feats}')
+        weights = self.pn.get_actions(feats, self)
+        return np.random.choice(bp.Policy.ACTIONS, weights=weights)
+        
 
     def get_features(self, state):
         temp_feats = np.zeros([6, NUM_VALUES])
@@ -131,17 +140,24 @@ class PolicyNetwork:
                       metrics=['accuracy'])
 
         self.model = model
-        print(self.model.summary())
+#        print(self.model.summary())
+        
+    def train(self, states, actions, rewards):
+        self.model.fit(x=states, y=actions, sample_weight=rewards)
+        
+    def get_actions(self, state, bla):
+        bla.log(f'{state.shape}')
+        return self.model.predict(state)
 
 
-if __name__ == "__main__":
-    n = 200
-    x = np.zeros(shape=(n, STATE_DIM))
-    y = np.random.randint(0, 3, n)
-
-    for i in range(n):
-        x[i] = np.random.randint(0, 6, size=STATE_DIM)
-
-    nn = PolicyNetwork(67, 3, 3)
-    # TODO: integrate callbacks later!
-    nn.model.fit(x=x, y=y, batch_size=32, epochs=10, verbose=1, callbacks=None)
+#if __name__ == "__main__":
+#    n = 200
+#    x = np.zeros(shape=(n, STATE_DIM))
+#    y = np.random.randint(0, 3, n)
+#
+#    for i in range(n):
+#        x[i] = np.random.randint(0, 6, size=STATE_DIM)
+#
+#    nn = PolicyNetwork(67, 3, 3)
+#    # TODO: integrate callbacks later!
+#    nn.model.fit(x=x, y=y, batch_size=32, epochs=10, verbose=1, callbacks=None)
