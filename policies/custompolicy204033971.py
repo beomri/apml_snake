@@ -13,10 +13,10 @@ from tensorflow.keras.optimizers import Adam, SGD, RMSprop
 
 
 NUM_VALUES = 11
-STATE_DIM = 1 + NUM_VALUES + (5 * NUM_VALUES)
+STATE_DIM = 8 * NUM_VALUES
 EPSILON = 0.05
 LR = 0.001
-DISCOUNT = 0.15
+DISCOUNT = 1
 NODES = 64
 HIDDEN = 3
 OPT = Adam
@@ -89,24 +89,22 @@ class Custom204033971(bp.Policy):
         new_action = np.random.choice(bp.Policy.ACTIONS, p=weights)
         return new_action
 
-
     def get_features(self, state):
-        temp_feats = np.zeros([6, NUM_VALUES])
+        temp_feats = np.zeros([8, NUM_VALUES])
 
         board, head = state
         head_pos, direction = head
 
-        r = head_pos[0]
-        c = head_pos[1]
-        temp_feats[0, board[r, c] + 1] = 1
-
+        forward = ['F']
+        left = ['L']
+        right = ['R']
         forward_region = ['F', 'F', 'F']
         forward_left_region = ['F', 'L', 'F', 'R', 'R', 'L', 'L']
         forward_right_region = ['F', 'R', 'F', 'L', 'L', 'R', 'R']
         right_region = ['R', 'F', 'R', 'R']
         left_region = ['L', 'F', 'L', 'L']
 
-        routes = [forward_region, forward_left_region,
+        routes = [forward, left, right, forward_region, forward_left_region,
                   forward_right_region, right_region, left_region]
 
         for route_ind, route in enumerate(routes):
@@ -116,10 +114,9 @@ class Custom204033971(bp.Policy):
                 temp_pos = temp_pos.move(bp.Policy.TURNS[direction][step])
                 r = temp_pos[0]
                 c = temp_pos[1]
-                temp_feats[route_ind + 1, board[r, c] + 1] += 1
+                temp_feats[route_ind, board[r, c] + 1] += 1
 
-        feats = np.ones(STATE_DIM)
-        feats[:-1] = temp_feats.flatten()
+        feats = temp_feats.flatten()
 
         return feats
 
@@ -129,8 +126,6 @@ class PolicyNetwork:
     def __init__(self, in_shape, out_shape, n_hidden_layers, n_nodes=64,
                  loss='sparse_categorical_crossentropy',
                  optimizer=Adam, lr=0.0001):
-
-        n_nodes = [n_nodes] * n_hidden_layers
 
         self.in_shape = in_shape
         self.out_shape = out_shape
@@ -143,11 +138,11 @@ class PolicyNetwork:
         input = Input(shape=(self.in_shape,))
         in_layer = input
         for i in range(n_hidden_layers):
-            out_dense = Dense(n_nodes[i], input_shape=(self.in_shape,))(in_layer)
-            out_activation = LeakyReLU()(out_dense)
-            in_layer = out_activation
-        output = Dense(self.out_shape, input_shape=(self.n_nodes[-1],),
-                       activation='softmax')(out_activation)
+            out_layer = Dense(n_nodes, activation='relu')(in_layer)
+            # out_dense = Dense(n_nodes)(in_layer)
+            # out_activation = LeakyReLU()(out_dense)
+            in_layer = out_layer
+        output = Dense(self.out_shape, activation='softmax')(out_layer)
         model = Model(inputs=input, outputs=output)
         model.compile(loss=self.loss,
                       optimizer=self.optimizer,
@@ -163,7 +158,7 @@ class PolicyNetwork:
         self.model = model
 
     def train(self, features, actions, rewards):
-        self.model.fit(x=features, y=actions, sample_weight=rewards, verbose=False)
+        self.model.fit(x=features, y=actions, batch_size=2, sample_weight=rewards, verbose=False)
 
     def get_actions(self, features):
         return self.model.predict(features[np.newaxis, :])
