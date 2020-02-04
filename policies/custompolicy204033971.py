@@ -18,6 +18,8 @@ LR = 0.001
 DISCOUNT = 0.15
 NUM_VALUES = 11
 STATE_DIM = (8 * NUM_VALUES)
+HIDDEN = 2
+NODES = 32
 
 
 class Custom204033971(bp.Policy):
