@@ -28,7 +28,10 @@ class Custom204033971(bp.Policy):
     """
 
     def cast_string_args(self, policy_args):
-        policy_args['epsilon'] = float(policy_args['epsilon']) if 'epsilon' in policy_args else EPSILON
+        policy_args['discount'] = float(policy_args['discount']) if 'discount' in policy_args else DISCOUNT
+        policy_args['lr'] = float(policy_args['lr']) if 'lr' in policy_args else LR
+        policy_args['hidden'] = float(policy_args['hidden']) if 'hidden' in policy_args else HIDDEN
+        policy_args['nodes'] = float(policy_args['nodes']) if 'nodes' in policy_args else NODES
         return policy_args
 
     def init_run(self):
@@ -36,7 +39,11 @@ class Custom204033971(bp.Policy):
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
-        self.pn = PolicyNetwork(STATE_DIM, len(bp.Policy.ACTIONS), 2, 32)
+        self.pn = PolicyNetwork(STATE_DIM,
+                                len(bp.Policy.ACTIONS),
+                                self.hidden,
+                                self.nodes,
+                                lr=self.lr)
         self.act_dict = {a:n for n,a in enumerate(bp.Policy.ACTIONS)}
 
 
