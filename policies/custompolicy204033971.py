@@ -2,21 +2,24 @@ import os
 import numpy as np
 from policies import base_policy as bp
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-#import tensorflow as tf
+
+import tensorflow as tf
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Dense
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.layers import Input, Dense, LeakyReLU, BatchNormalization
+from tensorflow.keras.optimizers import Adam, SGD, RMSprop
 #from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 
 #tf.get_logger().setLevel('ERROR')  # don't print warnings (works in tf 2)
 
 
+NUM_VALUES = 11
+STATE_DIM = 1 + NUM_VALUES + (5 * NUM_VALUES)
 EPSILON = 0.05
 LR = 0.001
 DISCOUNT = 0.15
-NUM_VALUES = 11
-STATE_DIM = 1 + NUM_VALUES + (5 * NUM_VALUES)
-
+NODES = 64
+HIDDEN = 3
+OPT = Adam
 
 class Custom204033971(bp.Policy):
     """
@@ -26,7 +29,11 @@ class Custom204033971(bp.Policy):
     """
 
     def cast_string_args(self, policy_args):
-        policy_args['epsilon'] = float(policy_args['epsilon']) if 'epsilon' in policy_args else EPSILON
+        policy_args['discount'] = float(policy_args['discount']) if 'discount' in policy_args else DISCOUNT
+        policy_args['lr'] = float(policy_args['lr']) if 'lr' in policy_args else LR
+        policy_args['hidden'] = float(policy_args['hidden']) if 'hidden' in policy_args else HIDDEN
+        policy_args['nodes'] = float(policy_args['nodes']) if 'nodes' in policy_args else NODES
+        policy_args['opt'] = float(policy_args['opt']) if 'opt' in policy_args else OPT
         return policy_args
 
     def init_run(self):
@@ -34,7 +41,12 @@ class Custom204033971(bp.Policy):
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
-        self.pn = PolicyNetwork(STATE_DIM, len(bp.Policy.ACTIONS), 2, 32)
+        self.pn = PolicyNetwork(STATE_DIM,
+                                len(bp.Policy.ACTIONS),
+                                self.hidden,
+                                self.nodes,
+                                optimizer=self.opt,
+                                lr=self.lr)
         self.act_dict = {a:n for n,a in enumerate(bp.Policy.ACTIONS)}
 
 
@@ -57,7 +69,7 @@ class Custom204033971(bp.Policy):
         X = np.array(self.last_states)
         Y = np.array([self.act_dict[a] for a in self.last_actions])
 
-        SW = np.array(self.last_rewards) #*(DISCOUNT ** np.arange(len(self.last_rewards)))
+        SW = np.array(self.last_rewards) * (self.discount ** np.arange(len(self.last_rewards)))
 
         self.pn.train(X, Y, SW)
 
@@ -116,8 +128,7 @@ class PolicyNetwork:
 
     def __init__(self, in_shape, out_shape, n_hidden_layers, n_nodes=64,
                  loss='sparse_categorical_crossentropy',
-                 optimizer=Adam, lr=0.0001, lr_decay=1e-6):
-
+                 optimizer=Adam, lr=0.0001):
 
         n_nodes = [n_nodes] * n_hidden_layers
 
@@ -126,22 +137,29 @@ class PolicyNetwork:
         self.n_hidden_layers = n_hidden_layers
         self.n_nodes = n_nodes
         self.loss = loss
-        self.optimizer = optimizer(lr=lr, decay=lr_decay)
+        self.optimizer = optimizer(lr=lr)
         self.lr = lr
 
         input = Input(shape=(self.in_shape,))
         in_layer = input
         for i in range(n_hidden_layers):
-            out_layer = Dense(n_nodes[i], input_shape=(self.in_shape,),
-                              activation='relu')(in_layer)
-            in_layer = out_layer
+            out_dense = Dense(n_nodes[i], input_shape=(self.in_shape,))(in_layer)
+            out_activation = LeakyReLU()(out_dense)
+            in_layer = out_activation
         output = Dense(self.out_shape, input_shape=(self.n_nodes[-1],),
-                       activation='softmax')(out_layer)
+                       activation='softmax')(out_activation)
         model = Model(inputs=input, outputs=output)
         model.compile(loss=self.loss,
                       optimizer=self.optimizer,
                       metrics=['accuracy'])
+        n = 1
+        x = np.zeros(shape=(n, STATE_DIM))
+        y = np.random.randint(0, 3, n)
 
+        for i in range(n):
+            x[i] = np.random.randint(0, 6, size=STATE_DIM)
+        model.fit(x, y, verbose=False)
+        model.predict(x)
         self.model = model
 
     def train(self, features, actions, rewards):
