@@ -37,6 +37,7 @@ class Custom204033971(bp.Policy):
         self.pn = PolicyNetwork(STATE_DIM, len(bp.Policy.ACTIONS), 2, 32)
         self.act_dict = {a:n for n,a in enumerate(bp.Policy.ACTIONS)}
 
+
     def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
         try:
@@ -55,17 +56,8 @@ class Custom204033971(bp.Policy):
 
         X = np.array(self.last_states)
         Y = np.array([self.act_dict[a] for a in self.last_actions])
-#        self.log(f'y shape: {Y.shape}')
-#        for k in range(len(self.last_actions)):
-#            self.log(f'last action: {self.last_actions[k]}')
-#            self.log(f'last index: {act_dict[self.last_actions[k]]}')
-#            Y[k] = self.act_dict[self.last_actions[k]]
+
         SW = np.array(self.last_rewards) #*(DISCOUNT ** np.arange(len(self.last_rewards)))
-#        SW=np.squeeze(SW)
-        
-#        self.log(f'{X.shape}')
-#        self.log(f'{Y.shape}')
-#        self.log(f'{SW.shape}')
 
         self.pn.train(X, Y, SW)
 
@@ -79,14 +71,12 @@ class Custom204033971(bp.Policy):
             self.last_states.append(self.get_features(prev_state))
             self.last_actions.append(prev_action)
             self.last_rewards.append(reward)
-        
+
         feats = self.get_features(new_state)
         weights = np.squeeze(self.pn.get_actions(feats))
-#        self.log(f'{weights}')
         new_action = np.random.choice(bp.Policy.ACTIONS, p=weights)
-#        self.log(f'{new_action}')
         return new_action
-        
+
 
     def get_features(self, state):
         temp_feats = np.zeros([6, NUM_VALUES])
@@ -126,7 +116,8 @@ class PolicyNetwork:
 
     def __init__(self, in_shape, out_shape, n_hidden_layers, n_nodes=64,
                  loss='sparse_categorical_crossentropy',
-                 optimizer=Adam, lr=0.001):
+                 optimizer=Adam, lr=0.0001, lr_decay=1e-6):
+
 
         n_nodes = [n_nodes] * n_hidden_layers
 
@@ -135,7 +126,7 @@ class PolicyNetwork:
         self.n_hidden_layers = n_hidden_layers
         self.n_nodes = n_nodes
         self.loss = loss
-        self.optimizer = optimizer(lr=lr)
+        self.optimizer = optimizer(lr=lr, decay=lr_decay)
         self.lr = lr
 
         input = Input(shape=(self.in_shape,))
@@ -152,24 +143,10 @@ class PolicyNetwork:
                       metrics=['accuracy'])
 
         self.model = model
-#        self.model.predict(np.random.random([1, 67]))
-#        print(self.model.summary())
-        
-    def train(self, states, actions, rewards):
-        self.model.fit(x=states, y=actions, sample_weight=rewards, verbose=False)
-        
-    def get_actions(self, state):
-        return self.model.predict(state[np.newaxis, :])
 
+    def train(self, features, actions, rewards):
+        self.model.fit(x=features, y=actions, sample_weight=rewards, verbose=False)
 
-#if __name__ == "__main__":
-#    n = 200
-#    x = np.zeros(shape=(n, STATE_DIM))
-#    y = np.random.randint(0, 3, n)
-#
-#    for i in range(n):
-#        x[i] = np.random.randint(0, 6, size=STATE_DIM)
-#
-#    nn = PolicyNetwork(67, 3, 3)
-#    # TODO: integrate callbacks later!
-#    nn.model.fit(x=x, y=y, batch_size=32, epochs=10, verbose=1, callbacks=None)
+    def get_actions(self, features):
+        return self.model.predict(features[np.newaxis, :])
+
