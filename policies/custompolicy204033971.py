@@ -1,9 +1,15 @@
+import os
 import numpy as np
 from policies import base_policy as bp
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+#import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+#from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+
+#tf.get_logger().setLevel('ERROR')  # don't print warnings (works in tf 2)
+
 
 EPSILON = 0.05
 LR = 0.001
@@ -47,15 +53,19 @@ class Custom204033971(bp.Policy):
             self.log(e, 'EXCEPTION')
 
         X = np.array(self.last_states)
-        Y = np.array(len(self.last_actions))
-        for ind, action in enumerate(bp.Policy.ACTIONS):
-            Y[self.last_actions == action] = ind
-        Y=np.squeeze(Y)
-        SW = np.array(self.last_rewards)
-        SW=np.squeeze(SW)
+        Y = np.zeros(len(self.last_actions))
+        act_dict = {a:n for n,a in enumerate(bp.Policy.ACTIONS)}
+#        self.log(f'y shape: {Y.shape}')
+        for k in range(len(self.last_actions)):
+#            self.log(f'last action: {self.last_actions[k]}')
+#            self.log(f'last index: {act_dict[self.last_actions[k]]}')
+            Y[k] = act_dict[self.last_actions[k]]
+        SW = np.array(self.last_rewards) #** np.arange(len(self.last_rewards))
+#        SW=np.squeeze(SW)
         
-        self.log(f'{X}')
-        self.log(f'{Y}')
+#        self.log(f'{X.shape}')
+#        self.log(f'{Y.shape}')
+#        self.log(f'{SW.shape}')
 
         self.pn.train(X, Y, SW)
 
@@ -71,9 +81,11 @@ class Custom204033971(bp.Policy):
             self.last_rewards.append(reward)
         
         feats = self.get_features(new_state)
-        self.log(f'{feats}')
-        weights = self.pn.get_actions(feats, self)
-        return np.random.choice(bp.Policy.ACTIONS, weights=weights)
+        weights = np.squeeze(self.pn.get_actions(feats))
+#        self.log(f'{weights}')
+        new_action = np.random.choice(bp.Policy.ACTIONS, p=weights)
+#        self.log(f'{new_action}')
+        return new_action
         
 
     def get_features(self, state):
@@ -143,11 +155,10 @@ class PolicyNetwork:
 #        print(self.model.summary())
         
     def train(self, states, actions, rewards):
-        self.model.fit(x=states, y=actions, sample_weight=rewards)
+        self.model.fit(x=states, y=actions, sample_weight=rewards, verbose=False)
         
-    def get_actions(self, state, bla):
-        bla.log(f'{state.shape}')
-        return self.model.predict(state)
+    def get_actions(self, state):
+        return self.model.predict(state[np.newaxis, :])
 
 
 #if __name__ == "__main__":
