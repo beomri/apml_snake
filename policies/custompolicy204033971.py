@@ -95,14 +95,17 @@ class Custom204033971(bp.Policy):
         board, head = state
         head_pos, direction = head
 
+        forward = ['F']
+        left = ['L']
+        right = ['R']
         forward_region = ['F', 'F', 'F']
         forward_left_region = ['F', 'L', 'F', 'R', 'R', 'L', 'L']
         forward_right_region = ['F', 'R', 'F', 'L', 'L', 'R', 'R']
         right_region = ['R', 'F', 'R', 'R']
         left_region = ['L', 'F', 'L', 'L']
 
-        routes = [forward_region, forward_left_region,
-                  forward_right_region, right_region, left_region]
+        routes = [forward, left, right, forward_region, forward_left_region,
+                 forward_right_region, right_region, left_region]
 
         for route_ind, route in enumerate(routes):
             temp_pos = head_pos
