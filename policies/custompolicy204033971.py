@@ -66,7 +66,7 @@ class Custom204033971(bp.Policy):
         x_train = np.array(self.last_states)
         y_train = np.array([self.act_dict[a] for a in self.last_actions])
 
-        sw = np.array(self.last_rewards) * (DISCOUNT ** np.arange(len(self.last_rewards)))
+        sw = np.array(self.last_rewards) * (self.discount ** np.arange(len(self.last_rewards)))
 
         self.pn.train(x_train, y_train, sw)
 
