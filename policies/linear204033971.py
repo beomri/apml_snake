@@ -3,8 +3,8 @@ from policies import base_policy as bp
 
 
 EPSILON = 0.05
-LR = 0.001
-DISCOUNT = 0.15
+LR = 0.0001
+DISCOUNT = 0.5
 NUM_VALUES = 11
 STATE_DIM = 1 + NUM_VALUES + (5 * NUM_VALUES)
 
@@ -66,9 +66,9 @@ class Linear204033971(bp.Policy):
             self.last_actions.append(prev_action)
             self.last_rewards.append(reward)
 
-        # turn off exploration when final score is calculated
-        if round > self.game_duration - self.score_scope:
-            self.epsilon = 0
+#        # turn off exploration when final score is calculated
+#        if round > self.game_duration - self.score_scope:
+#            self.epsilon = 0
 
         if np.random.rand() < self.epsilon:
             return np.random.choice(bp.Policy.ACTIONS)
@@ -112,9 +112,12 @@ class Linear204033971(bp.Policy):
 
         for route_ind, route in enumerate(routes):
             temp_pos = head_pos
-            temp_pos = temp_pos.move(bp.Policy.TURNS[direction][route[0]])
+            temp_direction = bp.Policy.TURNS[direction][route[0]]
+            temp_pos = temp_pos.move(temp_direction)
             for step in route[1:]:
-                temp_pos = temp_pos.move(bp.Policy.TURNS[direction][step])
+                temp_direction = bp.Policy.TURNS[temp_direction][step]
+                temp_pos = temp_pos.move(temp_direction)
+#                temp_pos = temp_pos.move(bp.Policy.TURNS[direction][step])
                 r = temp_pos[0]
                 c = temp_pos[1]
                 temp_feats[route_ind+1, board[r, c] + 1] += 1
