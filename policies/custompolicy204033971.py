@@ -17,7 +17,7 @@ EPSILON = 0.05
 LR = 0.001
 DISCOUNT = 0.15
 NUM_VALUES = 11
-STATE_DIM = (5 * NUM_VALUES)
+STATE_DIM = (8 * NUM_VALUES)
 
 
 class Custom204033971(bp.Policy):
@@ -59,7 +59,7 @@ class Custom204033971(bp.Policy):
         x_train = np.array(self.last_states)
         y_train = np.array([self.act_dict[a] for a in self.last_actions])
 
-        sw = np.array(self.last_rewards) *(DISCOUNT ** np.arange(len(self.last_rewards)))
+        sw = np.array(self.last_rewards) * (DISCOUNT ** np.arange(len(self.last_rewards)))
 
         self.pn.train(x_train, y_train, sw)
 
