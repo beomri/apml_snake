@@ -34,7 +34,8 @@ class Custom204033971(bp.Policy):
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
-        self.pn = PolicyNetwork(STATE_DIM, len(bp.Policy.ACTIONS), 3)
+        self.pn = PolicyNetwork(STATE_DIM, len(bp.Policy.ACTIONS), 2, 32)
+        self.act_dict = {a:n for n,a in enumerate(bp.Policy.ACTIONS)}
 
     def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
@@ -53,14 +54,13 @@ class Custom204033971(bp.Policy):
             self.log(e, 'EXCEPTION')
 
         X = np.array(self.last_states)
-        Y = np.zeros(len(self.last_actions))
-        act_dict = {a:n for n,a in enumerate(bp.Policy.ACTIONS)}
+        Y = np.array([self.act_dict[a] for a in self.last_actions])
 #        self.log(f'y shape: {Y.shape}')
-        for k in range(len(self.last_actions)):
+#        for k in range(len(self.last_actions)):
 #            self.log(f'last action: {self.last_actions[k]}')
 #            self.log(f'last index: {act_dict[self.last_actions[k]]}')
-            Y[k] = act_dict[self.last_actions[k]]
-        SW = np.array(self.last_rewards) #** np.arange(len(self.last_rewards))
+#            Y[k] = self.act_dict[self.last_actions[k]]
+        SW = np.array(self.last_rewards) #*(DISCOUNT ** np.arange(len(self.last_rewards)))
 #        SW=np.squeeze(SW)
         
 #        self.log(f'{X.shape}')
@@ -152,6 +152,7 @@ class PolicyNetwork:
                       metrics=['accuracy'])
 
         self.model = model
+#        self.model.predict(np.random.random([1, 67]))
 #        print(self.model.summary())
         
     def train(self, states, actions, rewards):
