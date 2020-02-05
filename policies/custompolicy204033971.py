@@ -2,6 +2,7 @@ import os
 import numpy as np
 from policies import base_policy as bp
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 #import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense
@@ -68,7 +69,10 @@ class Custom204033971(bp.Policy):
         x_train = np.array(self.last_states)
         y_train = np.array([self.act_dict[a] for a in self.last_actions])
 
-        sw = np.array(self.last_rewards) * (self.discount ** np.arange(len(self.last_rewards)))
+        sw = np.array(self.last_rewards)
+        for it in range(2, len(sw)+1):
+            sw[-it] += self.discount * sw[1 - it]
+        # sw = np.array(self.last_rewards) * (self.discount ** np.arange(len(self.last_rewards)))
 
         self.pn.train(x_train, y_train, sw)
 
@@ -109,9 +113,11 @@ class Custom204033971(bp.Policy):
 
         for route_ind, route in enumerate(routes):
             temp_pos = head_pos
-            temp_pos = temp_pos.move(bp.Policy.TURNS[direction][route[0]])
+            temp_direction = bp.Policy.TURNS[direction][route[0]]
+            temp_pos = temp_pos.move(temp_direction)
             for step in route[1:]:
-                temp_pos = temp_pos.move(bp.Policy.TURNS[direction][step])
+                temp_direction = bp.Policy.TURNS[direction][step]
+                temp_pos = temp_pos.move(temp_direction)
                 r = temp_pos[0]
                 c = temp_pos[1]
                 temp_feats[route_ind, board[r, c] + 1] += 1
