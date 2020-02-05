@@ -33,8 +33,8 @@ class Custom204033971(bp.Policy):
     def cast_string_args(self, policy_args):
         policy_args['discount'] = float(policy_args['discount']) if 'discount' in policy_args else DISCOUNT
         policy_args['lr'] = float(policy_args['lr']) if 'lr' in policy_args else LR
-        policy_args['hidden'] = float(policy_args['hidden']) if 'hidden' in policy_args else HIDDEN
-        policy_args['nodes'] = float(policy_args['nodes']) if 'nodes' in policy_args else NODES
+        policy_args['hidden'] = int(policy_args['hidden']) if 'hidden' in policy_args else HIDDEN
+        policy_args['nodes'] = int(policy_args['nodes']) if 'nodes' in policy_args else NODES
         return policy_args
 
     def init_run(self):
