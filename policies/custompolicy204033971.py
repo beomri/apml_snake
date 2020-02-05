@@ -15,7 +15,7 @@ from tensorflow.keras.optimizers import Adam
 
 
 EPSILON = 0.05
-LR = 0.001
+LR = 0.0001
 DISCOUNT = 0.15
 NUM_VALUES = 11
 STATE_DIM = (8 * NUM_VALUES)
