@@ -3,7 +3,7 @@
 ## Linear Agent
 https://danieltakeshi.github.io/2016/10/31/going-deeper-into-reinforcement-learning-understanding-q-learning-and-linear-function-approximation/
 
-best results for lr=0.001 and discount=0.2 or 0.1
+best results for lr=0.0001 and discount=0.4
 
 ## actor-critic policy gradient and other stuff
 https://jonathanfiat.github.io/ApproxiPong/
