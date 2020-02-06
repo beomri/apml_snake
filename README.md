@@ -13,6 +13,7 @@ https://lilianweng.github.io/lil-log/2018/04/08/policy-gradient-algorithms.html
 
 ## Discarded Methods
 quadratic - gets great resluts extremely fast, but then starts to lose. learning rate decay?
+
 genetic - works surprisingly well, and beats the avoid policy. performs worse than policy gradient
 
 
