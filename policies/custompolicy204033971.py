@@ -7,27 +7,26 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense
 from tensorflow.keras.optimizers import Adam
+from itertools import combinations_with_replacement
 #from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 
 #tf.get_logger().setLevel('ERROR')  # don't print warnings (works in tf 2)
-
-
 
 
 EPSILON = 0.05
 LR = 0.0001
 DISCOUNT = 0.15
 NUM_VALUES = 11
-STATE_DIM = (8 * NUM_VALUES)
+STATE_DIM = (16 * NUM_VALUES)
 HIDDEN = 2
 NODES = 32
-
+N_STEPS = 4
 
 class Custom204033971(bp.Policy):
     """
     A policy which avoids collisions with obstacles and other snakes.
     It has an epsilon parameter which controls the
-    percentag of actions which are randomly chosen.
+    percentage of actions which are randomly chosen.
     """
 
     def cast_string_args(self, policy_args):
@@ -48,6 +47,7 @@ class Custom204033971(bp.Policy):
                                 self.nodes,
                                 lr=self.lr)
         self.act_dict = {a:n for n,a in enumerate(bp.Policy.ACTIONS)}
+        self.positions = self.create_positions()
 
 
     def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
@@ -83,11 +83,11 @@ class Custom204033971(bp.Policy):
     def act(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
         if round > 0:
-            self.last_states.append(self.get_features(prev_state))
+            self.last_states.append(self.get_step_features(prev_state))
             self.last_actions.append(prev_action)
             self.last_rewards.append(reward)
 
-        feats = self.get_features(new_state)
+        feats = self.get_step_features(new_state)
         weights = np.squeeze(self.pn.get_actions(feats))
         new_action = np.random.choice(bp.Policy.ACTIONS, p=weights)
         return new_action
@@ -125,6 +125,66 @@ class Custom204033971(bp.Policy):
         feats = temp_feats.flatten()
 
         return feats
+
+    def get_step_features(self, state):
+
+        temp_feats = np.zeros([4 * N_STEPS, NUM_VALUES])
+
+        board, head = state
+        head_pos, direction = head
+
+        max_x = board.shape[0]
+        max_y = board.shape[1]
+
+        for pos_ind, pos in enumerate(self.positions[direction].keys()):
+            for version in self.positions[direction][pos]:
+                r = int((head_pos[0] + version[0]) % max_x)
+                c = int((head_pos[1] + version[1]) % max_y)
+                temp_feats[pos_ind, board[r, c] + 1] += 1
+
+        feats = temp_feats.flatten()
+
+        return feats
+
+    def create_positions(self, n_steps=4):
+
+        moves = {'N_F': ('N', (0, 1)),
+                 'N_L': ('W', (-1, 0)),
+                 'N_R': ('E', (1, 0)),
+                 'E_F': ('E', (1, 0)),
+                 'E_L': ('N', (0, 1)),
+                 'E_R': ('S', (0, -1)),
+                 'S_F': ('S', (0, -1)),
+                 'S_L': ('E', (1, 0)),
+                 'S_R': ('W', (-1, 0)),
+                 'W_F': ('W', (-1, 0)),
+                 'W_L': ('S', (0, -1)),
+                 'W_R': ('N', (0, 1))}
+
+        positions = {}
+        for pos in bp.Policy.TURNS.keys():
+            positions[pos] = {}
+            for i in range(1, n_steps + 1):
+                end_states = []
+                combinations = combinations_with_replacement(bp.Policy.ACTIONS, i)
+                for comb in combinations:
+                    dir = pos
+                    x_moves = np.zeros(i)
+                    y_moves = np.zeros(i)
+                    for ind, act in enumerate(comb):
+                        move = moves[f'{dir}_{act}']
+                        dir = move[0]
+                        x_moves[ind] = move[1][0]
+                        y_moves[ind] = move[1][1]
+                    end_states.append((np.sum(x_moves), np.sum(y_moves)))
+
+                end_states = list(set(end_states))
+                positions[pos][f'{i}_l'] = [p for p in end_states if p[0] < 0 and abs(p[0]) >= abs(p[1])]
+                positions[pos][f'{i}_r'] = [p for p in end_states if p[0] > 0 and abs(p[0]) >= abs(p[1])]
+                positions[pos][f'{i}_d'] = [p for p in end_states if p[1] < 0 and abs(p[0]) <= abs(p[1])]
+                positions[pos][f'{i}_u'] = [p for p in end_states if p[1] > 0 and abs(p[0]) <= abs(p[1])]
+
+        return positions
 
 
 class PolicyNetwork:
