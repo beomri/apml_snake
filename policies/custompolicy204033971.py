@@ -15,8 +15,8 @@ from tensorflow.keras.optimizers import Adam
 
 
 EPSILON = 0.05
-LR = 0.0001
-DISCOUNT = 0.15
+LR = 0.001
+DISCOUNT = 0.4
 NUM_VALUES = 11
 STATE_DIM = (8 * NUM_VALUES)
 HIDDEN = 2
@@ -103,21 +103,32 @@ class Custom204033971(bp.Policy):
         left = ['L']
         right = ['R']
         forward_region = ['F', 'F', 'F']
-        forward_left_region = ['F', 'L', 'F', 'R', 'R', 'L', 'L']
-        forward_right_region = ['F', 'R', 'F', 'L', 'L', 'R', 'R']
+        forward_left_region = ['L', 'R', 'F', 'F', 'L', 'L', 'F']
+        forward_right_region = ['R', 'L', 'F', 'F', 'R', 'R', 'F']
         right_region = ['R', 'F', 'R', 'R']
         left_region = ['L', 'F', 'L', 'L']
 
         routes = [forward, left, right, forward_region, forward_left_region,
                  forward_right_region, right_region, left_region]
 
+#        for route_ind, route in enumerate(routes):
+#            temp_pos = head_pos
+#            temp_direction = bp.Policy.TURNS[direction][route[0]]
+#            temp_pos = temp_pos.move(temp_direction)
+#            for step in route[1:]:
+#                temp_direction = bp.Policy.TURNS[direction][step]
+#                temp_pos = temp_pos.move(temp_direction)
+#                r = temp_pos[0]
+#                c = temp_pos[1]
+#                temp_feats[route_ind, board[r, c] + 1] += 1
+                
         for route_ind, route in enumerate(routes):
             temp_pos = head_pos
-            temp_direction = bp.Policy.TURNS[direction][route[0]]
-            temp_pos = temp_pos.move(temp_direction)
-            for step in route[1:]:
-                temp_direction = bp.Policy.TURNS[direction][step]
+            temp_direction = direction
+            for step in route:
+                temp_direction = bp.Policy.TURNS[temp_direction][step]
                 temp_pos = temp_pos.move(temp_direction)
+#                temp_pos = temp_pos.move(bp.Policy.TURNS[direction][step])
                 r = temp_pos[0]
                 c = temp_pos[1]
                 temp_feats[route_ind, board[r, c] + 1] += 1

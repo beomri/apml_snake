@@ -25,6 +25,7 @@ class Linear204033971(bp.Policy):
     def init_run(self):
         self.r_sum = 0
         self.weights = np.zeros(STATE_DIM)
+#        self.weights = np.random.randn(STATE_DIM)
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
@@ -99,11 +100,11 @@ class Linear204033971(bp.Policy):
 
         r = head_pos[0]
         c = head_pos[1]
-        temp_feats[0, board[r, c] + 1] = 1
+        temp_feats[-1, board[r, c] + 1] = 1
 
         forward_region = ['F', 'F', 'F']
-        forward_left_region = ['F', 'L', 'F', 'R', 'R', 'L', 'L']
-        forward_right_region = ['F', 'R', 'F', 'L', 'L', 'R', 'R']
+        forward_left_region = ['L', 'R', 'F', 'F', 'L', 'L', 'F']
+        forward_right_region = ['R', 'L', 'F', 'F', 'R', 'R', 'F']
         right_region = ['R', 'F', 'R', 'R']
         left_region = ['L', 'F', 'L', 'L']
 
@@ -112,15 +113,14 @@ class Linear204033971(bp.Policy):
 
         for route_ind, route in enumerate(routes):
             temp_pos = head_pos
-            temp_direction = bp.Policy.TURNS[direction][route[0]]
-            temp_pos = temp_pos.move(temp_direction)
-            for step in route[1:]:
+            temp_direction = direction
+            for step in route:
                 temp_direction = bp.Policy.TURNS[temp_direction][step]
                 temp_pos = temp_pos.move(temp_direction)
 #                temp_pos = temp_pos.move(bp.Policy.TURNS[direction][step])
                 r = temp_pos[0]
                 c = temp_pos[1]
-                temp_feats[route_ind+1, board[r, c] + 1] += 1
+                temp_feats[route_ind, board[r, c] + 1] += 1
 
         feats = np.ones(STATE_DIM)
         feats[:-1] = temp_feats.flatten()
