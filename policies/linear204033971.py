@@ -1,13 +1,14 @@
 import numpy as np
 from policies import base_policy as bp
-
+from itertools import combinations_with_replacement
 
 EPSILON = 0.05
 LR = 0.0001
 DISCOUNT = 0.5
 NUM_VALUES = 11
-STATE_DIM = 1 + NUM_VALUES + (5 * NUM_VALUES)
-
+#STATE_DIM = 1 + NUM_VALUES + (5 * NUM_VALUES)
+N_STEPS = 3
+STATE_DIM = 4 * N_STEPS * NUM_VALUES
 
 class Linear204033971(bp.Policy):
     """
@@ -29,6 +30,7 @@ class Linear204033971(bp.Policy):
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
+        self.positions = self.create_positions(N_STEPS)
 
     def learn(self, round, prev_state, prev_action,
               reward, new_state, too_slow):
@@ -59,7 +61,7 @@ class Linear204033971(bp.Policy):
             q_values[a_ind] = self.get_qvalue(state, a)
         q_opt = reward + self.discount*q_values.max()
         delta = self.get_qvalue(state, action)
-        self.weights += self.lr * (q_opt - delta) * self.get_features(state)
+        self.weights += self.lr * (q_opt - delta) * self.get_step_features(state)
 
     def act(self, round, prev_state, prev_action, reward, new_state, too_slow):
         if round > 0:
@@ -90,7 +92,7 @@ class Linear204033971(bp.Policy):
         head_pos, direction = head
         next_position = head_pos.move(bp.Policy.TURNS[direction][action])
         new_state = board, (next_position, bp.Policy.TURNS[direction][action])
-        return np.dot(self.weights, self.get_features(new_state))
+        return np.dot(self.weights, self.get_step_features(new_state))
 
     def get_features(self, state):
         temp_feats = np.zeros([6, NUM_VALUES])
@@ -126,3 +128,65 @@ class Linear204033971(bp.Policy):
         feats[:-1] = temp_feats.flatten()
 
         return feats
+
+    def get_step_features(self, state):
+
+        temp_feats = np.zeros([4 * N_STEPS, NUM_VALUES])
+
+        board, head = state
+        head_pos, direction = head
+
+        max_x = board.shape[0]
+        max_y = board.shape[1]
+
+        for pos_ind, pos in enumerate(self.positions[direction].keys()):
+            for version in self.positions[direction][pos]:
+                r = int((head_pos[0] + version[0]) % max_x)
+                c = int((head_pos[1] + version[1]) % max_y)
+                temp_feats[pos_ind, board[r, c] + 1] += 1
+
+        feats = temp_feats.flatten()
+
+        return feats
+
+    def create_positions(self, n_steps=4):
+
+        moves = {'N_F': ('N', (0, 1)),
+                 'N_L': ('W', (-1, 0)),
+                 'N_R': ('E', (1, 0)),
+                 'E_F': ('E', (1, 0)),
+                 'E_L': ('N', (0, 1)),
+                 'E_R': ('S', (0, -1)),
+                 'S_F': ('S', (0, -1)),
+                 'S_L': ('E', (1, 0)),
+                 'S_R': ('W', (-1, 0)),
+                 'W_F': ('W', (-1, 0)),
+                 'W_L': ('S', (0, -1)),
+                 'W_R': ('N', (0, 1))}
+
+        positions = {}
+        for pos in bp.Policy.TURNS.keys():
+            positions[pos] = {}
+            for i in range(1, n_steps + 1):
+                end_states = []
+                combinations = combinations_with_replacement(bp.Policy.ACTIONS, i)
+                for comb in combinations:
+                    dir = pos
+                    x_moves = np.zeros(i)
+                    y_moves = np.zeros(i)
+                    for ind, act in enumerate(comb):
+                        move = moves[f'{dir}_{act}']
+                        dir = move[0]
+                        x_moves[ind] = move[1][0]
+                        y_moves[ind] = move[1][1]
+                    end_states.append((np.sum(x_moves), np.sum(y_moves)))
+
+                end_states = list(set(end_states))
+                positions[pos][f'{i}_l'] = [p for p in end_states if p[0] < 0 and abs(p[0]) >= abs(p[1])]
+                positions[pos][f'{i}_r'] = [p for p in end_states if p[0] > 0 and abs(p[0]) >= abs(p[1])]
+                positions[pos][f'{i}_d'] = [p for p in end_states if p[1] < 0 and abs(p[0]) <= abs(p[1])]
+                positions[pos][f'{i}_u'] = [p for p in end_states if p[1] > 0 and abs(p[0]) <= abs(p[1])]
+
+        return positions
+
+
