@@ -25,7 +25,6 @@ class Linear204033971(bp.Policy):
     def init_run(self):
         self.r_sum = 0
         self.weights = np.zeros(STATE_DIM)
-#        self.weights = np.random.randn(STATE_DIM)
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
@@ -67,9 +66,9 @@ class Linear204033971(bp.Policy):
             self.last_actions.append(prev_action)
             self.last_rewards.append(reward)
 
-#        # turn off exploration when final score is calculated
-#        if round > self.game_duration - self.score_scope:
-#            self.epsilon = 0
+        # turn off exploration when final score is calculated
+        if round > self.game_duration - self.score_scope:
+            self.epsilon = 0
 
         if np.random.rand() < self.epsilon:
             return np.random.choice(bp.Policy.ACTIONS)
