@@ -12,7 +12,7 @@ EPSILON = 0.05
 LR = 0.001
 DISCOUNT = 0.5
 NUM_VALUES = 11
-STATE_DIM = (16 * NUM_VALUES)
+STATE_DIM = ((3 + 5) * NUM_VALUES)
 HIDDEN = 2
 NODES = 32
 
@@ -61,7 +61,7 @@ class Custom204033971(bp.Policy):
     def act(self, round, prev_state, prev_action, reward, new_state, too_slow):
 
         if round > 0:
-            self.last_states.append(self.get_step_features(prev_state))
+            self.last_states.append(self.get_features(prev_state))
             self.last_actions.append(prev_action)
             self.last_rewards.append(reward)
 
