@@ -8,7 +8,6 @@ from tensorflow.keras.layers import Input, Dense
 from tensorflow.keras.optimizers import Adam
 
 
-EPSILON = 0.05
 LR = 0.001
 DISCOUNT = 0.5
 NUM_VALUES = 11
