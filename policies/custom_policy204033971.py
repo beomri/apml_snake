@@ -1,11 +1,11 @@
-import os
-import numpy as np
-from policies import base_policy as bp
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense
 from tensorflow.keras.optimizers import Adam
+import numpy as np
+from policies import base_policy as bp
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
 LR = 0.001
@@ -41,8 +41,8 @@ class Custom204033971(bp.Policy):
                                 lr=self.lr)
         self.act_dict = {a: n for n, a in enumerate(bp.Policy.ACTIONS)}
 
-
-    def learn(self, round, prev_state, prev_action, reward, new_state, too_slow):
+    def learn(self, round, prev_state, prev_action, reward, new_state,
+              too_slow):
 
         x_train = np.array(self.last_states)
         y_train = np.array([self.act_dict[a] for a in self.last_actions])
@@ -69,7 +69,6 @@ class Custom204033971(bp.Policy):
         new_action = np.random.choice(bp.Policy.ACTIONS, p=weights)
         return new_action
 
-
     def get_features(self, state):
         temp_feats = np.zeros([8, NUM_VALUES])
 
@@ -86,7 +85,7 @@ class Custom204033971(bp.Policy):
         left_region = ['L', 'F', 'L', 'L']
 
         routes = [forward, left, right, forward_region, forward_left_region,
-                 forward_right_region, right_region, left_region]
+                  forward_right_region, right_region, left_region]
 
         for route_ind, route in enumerate(routes):
             temp_pos = head_pos
@@ -101,7 +100,6 @@ class Custom204033971(bp.Policy):
         feats = temp_feats.flatten()
 
         return feats
-
 
 
 class PolicyNetwork:
@@ -140,7 +138,8 @@ class PolicyNetwork:
         self.model = model
 
     def train(self, features, actions, rewards):
-        self.model.fit(x=features, y=actions, sample_weight=rewards, verbose=False)
+        self.model.fit(x=features, y=actions, sample_weight=rewards,
+                       verbose=False)
 
     def get_actions(self, features):
         return self.model.predict(features[np.newaxis, :])
