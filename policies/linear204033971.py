@@ -3,7 +3,7 @@ from policies import base_policy as bp
 
 
 EPSILON = 0.05
-LR = 0.0001
+LR = 0.01
 DISCOUNT = 0.5
 NUM_VALUES = 11
 STATE_DIM = 1 + NUM_VALUES + (5 * NUM_VALUES)
@@ -42,9 +42,6 @@ class Linear204033971(bp.Policy):
 
     def update_values(self, state, action, reward):
         q_values = self.get_qvalues(state)
-        # q_values = np.zeros(len(bp.Policy.ACTIONS))
-        # for a_ind, a in enumerate(bp.Policy.ACTIONS):
-        #     q_values[a_ind] = self.get_qvalue(state, a)
         q_opt = reward + (self.discount * q_values.max())
         delta = q_values[self.act2ind[action]]
         self.weights[self.act2ind[action], :] += self.lr * (q_opt - delta) * self.get_features(state)
@@ -56,7 +53,7 @@ class Linear204033971(bp.Policy):
             self.last_rewards.append(reward)
 
         # turn off exploration when final score is calculated
-        if round > self.game_duration - self.score_scope:
+        if round > (self.game_duration - self.score_scope):
             self.epsilon = 0
 
         if np.random.rand() < self.epsilon:
@@ -66,18 +63,8 @@ class Linear204033971(bp.Policy):
 
     def get_policy(self, state):
         return bp.Policy.ACTIONS[np.argmax(self.get_qvalues(state))]
-        # q_values = self.weights @ 
-
-        # for a_ind, a in enumerate(bp.Policy.ACTIONS):
-        #     q_values[a_ind] = self.get_qvalue(state, a)
-
-        # return bp.Policy.ACTIONS[np.argmax(q_values)]
 
     def get_qvalues(self, state):
-        # board, head = state
-        # head_pos, direction = head
-        # next_position = head_pos.move(bp.Policy.TURNS[direction][action])
-        # new_state = board, (next_position, bp.Policy.TURNS[direction][action])
         return self.weights @ self.get_features(state)
 
     def get_features(self, state):
@@ -105,7 +92,6 @@ class Linear204033971(bp.Policy):
             for step in route:
                 temp_direction = bp.Policy.TURNS[temp_direction][step]
                 temp_pos = temp_pos.move(temp_direction)
-#                temp_pos = temp_pos.move(bp.Policy.TURNS[direction][step])
                 r = temp_pos[0]
                 c = temp_pos[1]
                 temp_feats[route_ind, board[r, c] + 1] += 1
