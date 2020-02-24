@@ -10,8 +10,8 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 LR = 0.001
 DISCOUNT = 0.5
-NUM_VALUES = 11
-STATE_DIM = ((3 + 5) * NUM_VALUES)
+NUM_VALUES = 11 # number of possible values on the board = len([-1...9])
+STATE_DIM = ((3 + 5) * NUM_VALUES) # the size of our state representation
 HIDDEN = 2
 NODES = 32
 
@@ -30,51 +30,54 @@ class Custom204033971(bp.Policy):
         return policy_args
 
     def init_run(self):
-        self.r_sum = 0
-        self.last_states = []
-        self.last_actions = []
-        self.last_rewards = []
+        self.last_states = [] # states of episode
+        self.last_actions = [] # actions of episodes
+        self.last_rewards = [] # rewardss of episodes
         self.pn = PolicyNetwork(STATE_DIM,
                                 len(bp.Policy.ACTIONS),
                                 self.hidden,
                                 self.nodes,
-                                lr=self.lr)
-        self.act_dict = {a: n for n, a in enumerate(bp.Policy.ACTIONS)}
+                                lr=self.lr) # the NN for the policy gradient
+        self.act_dict = {a: n for n, a in enumerate(bp.Policy.ACTIONS)} # get index of action
 
     def learn(self, round, prev_state, prev_action, reward, new_state,
               too_slow):
 
+        # prepare data for NN
         x_train = np.array(self.last_states)
         y_train = np.array([self.act_dict[a] for a in self.last_actions])
 
+        # propagate rewards which will act as sample weights
         sw = np.array(self.last_rewards)
         for it in range(2, len(sw)+1):
             sw[-it] += self.discount * sw[1 - it]
 
         self.pn.train(x_train, y_train, sw)
 
+        # reset episodes
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
 
     def act(self, round, prev_state, prev_action, reward, new_state, too_slow):
-
         if round > 0:
             self.last_states.append(self.get_features(prev_state))
             self.last_actions.append(prev_action)
             self.last_rewards.append(reward)
 
         feats = self.get_features(new_state)
-        weights = np.squeeze(self.pn.get_actions(feats))
-        new_action = np.random.choice(bp.Policy.ACTIONS, p=weights)
+        weights = np.squeeze(self.pn.get_actions(feats)) # probability for each action
+        new_action = np.random.choice(bp.Policy.ACTIONS, p=weights) # take action according to stochastic policy
         return new_action
 
     def get_features(self, state):
+        """ return the state vector by exploring regions as explained in the PDF """
         temp_feats = np.zeros([8, NUM_VALUES])
 
         board, head = state
         head_pos, direction = head
 
+        # the route for each region
         forward = ['F']
         left = ['L']
         right = ['R']
@@ -87,6 +90,7 @@ class Custom204033971(bp.Policy):
         routes = [forward, left, right, forward_region, forward_left_region,
                   forward_right_region, right_region, left_region]
 
+        # for each route, count how many of each objects it contains
         for route_ind, route in enumerate(routes):
             temp_pos = head_pos
             temp_direction = direction
@@ -96,6 +100,7 @@ class Custom204033971(bp.Policy):
                 r = temp_pos[0]
                 c = temp_pos[1]
                 temp_feats[route_ind, board[r, c] + 1] += 1
+                # we add one in the index since the minimum value is -1
 
         feats = temp_feats.flatten()
 
@@ -104,9 +109,9 @@ class Custom204033971(bp.Policy):
 
 class PolicyNetwork:
 
-    def __init__(self, in_shape, out_shape, n_hidden_layers, n_nodes=64,
+    def __init__(self, in_shape, out_shape, n_hidden_layers, n_nodes=32,
                  loss='sparse_categorical_crossentropy',
-                 optimizer=Adam, lr=0.0001,):
+                 optimizer=Adam, lr=0.001,):
 
         self.in_shape = in_shape
         self.out_shape = out_shape
@@ -116,6 +121,7 @@ class PolicyNetwork:
         self.optimizer = optimizer(lr=lr)
         self.lr = lr
 
+        # build NN
         input = Input(shape=(self.in_shape,))
         in_layer = input
         for i in range(n_hidden_layers):
@@ -127,6 +133,7 @@ class PolicyNetwork:
                       optimizer=self.optimizer,
                       metrics=['accuracy'])
 
+        # fit some random data so it will initialize
         n = 1
         x_init = np.zeros(shape=(n, STATE_DIM))
         y_init = np.random.randint(0, 3, n)
@@ -138,8 +145,14 @@ class PolicyNetwork:
         self.model = model
 
     def train(self, features, actions, rewards):
+        """ train according to policy gradient.
+            the rewards serve as sample weights so they will be multipliers.
+        """
         self.model.fit(x=features, y=actions, sample_weight=rewards,
                        verbose=False)
 
     def get_actions(self, features):
+        """
+        return the stochastic policy
+        """
         return self.model.predict(features[np.newaxis, :])
