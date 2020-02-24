@@ -5,8 +5,8 @@ from policies import base_policy as bp
 EPSILON = 0.05
 LR = 0.01
 DISCOUNT = 0.5
-NUM_VALUES = 11
-STATE_DIM = 1 + NUM_VALUES + (5 * NUM_VALUES)
+NUM_VALUES = 11 # number of possible values on the board = len([-1...9])
+STATE_DIM = 1 + (8 * NUM_VALUES) # the size of our state representation
 
 
 class Linear204033971(bp.Policy):
@@ -23,12 +23,11 @@ class Linear204033971(bp.Policy):
         return policy_args
 
     def init_run(self):
-        self.r_sum = 0
-        self.weights = np.zeros([3, STATE_DIM])
-        self.last_states = []
-        self.last_actions = []
-        self.last_rewards = []
-        self.act2ind = {a: i for i, a in enumerate(bp.Policy.ACTIONS)}
+        self.weights = np.zeros([3, STATE_DIM]) # linear approximation functions
+        self.last_states = [] # states of episode
+        self.last_actions = [] # actions of episodes
+        self.last_rewards = [] # rewardss of episodes
+        self.act2ind = {a: i for i, a in enumerate(bp.Policy.ACTIONS)} # get index of action
 
     def learn(self, round, prev_state, prev_action,
               reward, new_state, too_slow):
@@ -36,11 +35,13 @@ class Linear204033971(bp.Policy):
         for s, a, r in zip(self.last_states, self.last_actions, self.last_rewards):
             self.update_values(s, a, r)
 
+        # reset episodes
         self.last_states = []
         self.last_actions = []
         self.last_rewards = []
 
     def update_values(self, state, action, reward):
+        """ use bellman's equations to update function approximation """
         q_values = self.get_qvalues(state)
         q_opt = reward + (self.discount * q_values.max())
         delta = q_values[self.act2ind[action]]
@@ -62,30 +63,34 @@ class Linear204033971(bp.Policy):
         return self.get_policy(new_state)
 
     def get_policy(self, state):
+        """ return action with highest q-value for given state """
         return bp.Policy.ACTIONS[np.argmax(self.get_qvalues(state))]
 
     def get_qvalues(self, state):
+        " return q-values of all actions for given state """
         return self.weights @ self.get_features(state)
 
     def get_features(self, state):
-        temp_feats = np.zeros([6, NUM_VALUES])
+        """ return the state vector by exploring regions as explained in the PDF """
+        temp_feats = np.zeros([8, NUM_VALUES])
 
         board, head = state
         head_pos, direction = head
 
-        r = head_pos[0]
-        c = head_pos[1]
-        temp_feats[-1, board[r, c] + 1] = 1
-
+        # the route for each region
+        forward = ['F']
+        left = ['L']
+        right = ['R']
         forward_region = ['F', 'F', 'F']
         forward_left_region = ['L', 'R', 'F', 'F', 'L', 'L', 'F']
         forward_right_region = ['R', 'L', 'F', 'F', 'R', 'R', 'F']
         right_region = ['R', 'F', 'R', 'R']
         left_region = ['L', 'F', 'L', 'L']
 
-        routes = [forward_region, forward_left_region,
+        routes = [forward, left, right, forward_region, forward_left_region,
                   forward_right_region, right_region, left_region]
 
+        # for each route, count how many of each objects it contains
         for route_ind, route in enumerate(routes):
             temp_pos = head_pos
             temp_direction = direction
@@ -95,8 +100,9 @@ class Linear204033971(bp.Policy):
                 r = temp_pos[0]
                 c = temp_pos[1]
                 temp_feats[route_ind, board[r, c] + 1] += 1
+                # we add one in the index since the minimum value is -1
 
-        feats = np.ones(STATE_DIM)
-        feats[:-1] = temp_feats.flatten()
+        feats = np.ones(STATE_DIM) # we use ones sothe last element will be the bias
+        feats[:-1] = temp_feats.flatten() # fill the rest elements with the real features
 
         return feats
